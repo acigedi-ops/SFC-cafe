@@ -316,7 +316,7 @@ function summary(day) {
 
 // ---------- Static files ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'application/javascript',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.mp3': 'audio/mpeg' };
+  '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.mp3': 'audio/mpeg' };
 const PAGES = { '/': 'order.html', '/order': 'order.html', '/status': 'status.html', '/board': 'board.html',
   '/admin': 'admin.html', '/sign': 'sign.html', '/login': 'login.html' };
 
