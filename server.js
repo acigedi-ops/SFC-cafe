@@ -50,6 +50,15 @@ const MIGRATIONS = {
     if (!tea) { tea = { id: id(4), name: 'Tea', items: [] }; st.menu.push(tea); }
     tea.items.push(londonFog());
   },
+  'hot-iced-matcha-americano': (st) => {
+    for (const it of st.menu.flatMap(c => c.items)) {
+      if (!/^(matcha|americano)$/i.test(it.name.trim())) continue;
+      it.optionGroups = it.optionGroups || [];
+      if (it.optionGroups.some(x => /iced/i.test(x.name))) continue;
+      it.optionGroups.unshift({ id: id(4), name: 'Hot or Iced', multi: false, required: true,
+        choices: [{ name: 'Hot', price: 0 }, { name: 'Iced', price: 0 }] });
+    }
+  },
   'matcha-mango-no-kiwi': (st) => {
     for (const it of st.menu.flatMap(c => c.items)) {
       if (!/matcha/i.test(it.name)) continue;
@@ -87,7 +96,7 @@ function defaultStore() {
     },
     menu: [
       { id: id(4), name: 'Coffee', items: [
-        item('Americano', 'Espresso and hot water.', 4, [syrups()]),
+        item('Americano', 'Espresso and water. Hot or iced.', 4, [g('Hot or Iced', ['Hot', 'Iced']), syrups()]),
         item('Flat White', 'Espresso with velvety steamed milk.', 4, [syrups()]),
         item('Latte', 'Espresso with steamed milk. Hot or iced.', 4, [g('Hot or Iced', ['Hot', 'Iced']), syrups()]),
         item('Cappuccino', 'Espresso, steamed milk and lots of foam.', 4, [syrups()]),
@@ -101,7 +110,8 @@ function defaultStore() {
             'Mango', 'Pineapple', 'Lime', 'Watermelon', 'Strawberry', 'Raspberry'])]),
       ]},
       { id: id(4), name: 'Matcha', items: [
-        item('Matcha', 'Matcha latte with your choice of flavor.', 5, [
+        item('Matcha', 'Matcha latte with your choice of flavor. Hot or iced.', 5, [
+          g('Hot or Iced', ['Hot', 'Iced']),
           g('Flavor', ['Honey', 'Mango', 'Raspberry', 'Strawberry', 'Passion Fruit', 'Coconut', 'Blueberry', 'Pineapple']),
           g('Extras', ['Cold foam'], { multi: true })]),
       ]},
