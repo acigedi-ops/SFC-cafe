@@ -44,6 +44,15 @@ const MIGRATIONS = {
     if (!tea) { tea = { id: id(4), name: 'Tea', items: [] }; st.menu.push(tea); }
     tea.items.push(londonFog());
   },
+  'matcha-mango-no-kiwi': (st) => {
+    for (const it of st.menu.flatMap(c => c.items)) {
+      if (!/matcha/i.test(it.name)) continue;
+      const g = (it.optionGroups || []).find(x => /flavor/i.test(x.name));
+      if (!g) continue;
+      g.choices = g.choices.filter(ch => !/^kiwi$/i.test(ch.name));
+      if (!g.choices.some(ch => /^mango$/i.test(ch.name))) g.choices.splice(1, 0, { name: 'Mango', price: 0 });
+    }
+  },
 };
 function migrate() {
   store.migrations = store.migrations || [];
@@ -87,7 +96,7 @@ function defaultStore() {
       ]},
       { id: id(4), name: 'Matcha', items: [
         item('Matcha', 'Matcha latte with your choice of flavor.', 5, [
-          g('Flavor', ['Honey', 'Kiwi', 'Raspberry', 'Strawberry', 'Passion Fruit', 'Coconut', 'Blueberry', 'Pineapple']),
+          g('Flavor', ['Honey', 'Mango', 'Raspberry', 'Strawberry', 'Passion Fruit', 'Coconut', 'Blueberry', 'Pineapple']),
           g('Extras', ['Cold foam'], { multi: true })]),
       ]},
       { id: id(4), name: 'Tea', items: [
