@@ -401,7 +401,7 @@ function htmlCsp(hashes) {
 
 // ---------- Static files ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'application/javascript',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.mp3': 'audio/mpeg' };
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.mp3': 'audio/mpeg', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webp': 'image/webp', '.jpg': 'image/jpeg' };
 const PAGES = { '/': 'order.html', '/order': 'order.html', '/status': 'status.html', '/board': 'board.html',
   '/admin': 'admin.html', '/sign': 'sign.html', '/login': 'login.html' };
 
