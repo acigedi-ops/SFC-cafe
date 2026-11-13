@@ -77,8 +77,11 @@
   <form id="checkout" autocomplete="on">
     <label class="field">First name<input name="firstName" autocomplete="given-name" required maxlength="40"></label>
     <label class="field">Last name<input name="lastName" autocomplete="family-name" required maxlength="40"></label>
-    <label class="field">Phone number<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(555) 555-5555"></label>
-    <p class="muted small" style="margin-top:-4px">We'll text you when your order is ready.</p>
+    <div id="phoneBox" style="display:none">
+      <label class="field">Phone number<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 555-5555"></label>
+      <p class="muted small" style="margin-top:-4px">We'll text you when your order is ready.</p>
+    </div>
+    <p class="muted small" id="noPhoneNote">You'll get a confirmation number, and your screen will show when your order is ready.</p>
     <label class="field">Note for the order (optional)<textarea name="note" maxlength="200" placeholder="Anything we should know?"></textarea></label>
     <div class="hp"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
     <div id="coErr" class="notice err" style="display:none"></div>
@@ -106,6 +109,8 @@ async function load() {
   else if (data.paused) { closed.textContent = 'We are very busy right now and have paused new orders for a few minutes. Please check back shortly!'; closed.style.display = 'block'; }
   else if (data.waiting > 0) { closed.className = 'notice'; closed.textContent = `${data.waiting} order${data.waiting === 1 ? '' : 's'} ahead of you right now.`; closed.style.display = 'block'; }
   else closed.style.display = 'none';
+  $('#phoneBox').style.display = data.sms ? '' : 'none';
+  $('#noPhoneNote').style.display = data.sms ? 'none' : '';
   render();
   // drop cart lines that are no longer on menu
   const ids = new Set(data.menu.flatMap(c => c.items.filter(i => !i.soldOut).map(i => i.id)));
@@ -193,7 +198,7 @@ $('#checkout').onsubmit = async (e) => {
   const f = e.target, err = $('#coErr'), btn = $('#placeBtn');
   err.style.display = 'none';
   const digits = f.phone.value.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
-  if (digits.length !== 10) { err.textContent = 'Please enter a 10-digit phone number.'; err.style.display = 'block'; return; }
+  if (data.sms && digits.length !== 10) { err.textContent = 'Please enter a 10-digit phone number.'; err.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = 'Placing order…';
   const body = { firstName: f.firstName.value, lastName: f.lastName.value, phone: digits, note: f.note.value, website: f.website.value,
     items: cart.map(l => ({ itemId: l.itemId, qty: l.qty, options: l.options, note: l.note })) };
@@ -201,7 +206,7 @@ $('#checkout').onsubmit = async (e) => {
     const r = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Could not place order');
-    store.set('sfc_me', { firstName: body.firstName, lastName: body.lastName, phone: digits });
+    store.set('sfc_me', { firstName: body.firstName, lastName: body.lastName, phone: digits || (store.get('sfc_me', {}) || {}).phone || '' });
     store.set('sfc_last', { id: j.id, number: j.number, at: Date.now() });
     cart = []; saveCart();
     location.href = '/status?id=' + encodeURIComponent(j.id) + '&new=1';
