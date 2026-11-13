@@ -6,21 +6,26 @@
 <title>QR Sign – SFC Cafe</title>
 <script src="/qrcode.js"></script>
 <style>
-  @page { size: letter; margin: 0.5in; }
+  @font-face { font-family: 'Playfair Display'; font-weight: 800; src: url('/playfair-800.woff2') format('woff2'); }
+  @font-face { font-family: 'Jost'; font-weight: 400; src: url('/jost-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Jost'; font-weight: 500; src: url('/jost-500.woff2') format('woff2'); }
+  @page { size: letter; margin: 0.4in; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #2b1d14; background: #eee; }
-  .controls { max-width: 7.5in; margin: 16px auto; padding: 0 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .controls input { flex: 1; min-width: 220px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; }
-  .controls button { padding: 10px 18px; border: 0; border-radius: 8px; background: #6b3e26; color: #fff; font-weight: 700; font-size: 15px; }
-  .page { width: 7.5in; min-height: 10in; margin: 0 auto 30px; background: #fff; padding: 0.6in 0.5in; text-align: center; border: 10px solid #6b3e26; border-radius: 24px; }
-  .page h1 { font-size: 64px; margin: 0; letter-spacing: -1px; }
-  .page h2 { font-size: 34px; margin: 10px 0 30px; font-weight: 600; color: #6b3e26; }
-  #qr svg, #qr img { width: 4.6in; height: 4.6in; }
-  .steps { display: flex; justify-content: center; gap: 28px; margin-top: 30px; font-size: 20px; font-weight: 600; }
-  .steps span { display: block; font-size: 34px; }
-  .url { margin-top: 22px; font-size: 16px; color: #7a6a5f; word-break: break-all; }
-  .free { margin-top: 14px; font-size: 20px; }
-  @media print { body { background: #fff; } .controls { display: none; } .page { margin: 0; border-width: 8px; } }
+  body { margin: 0; font-family: 'Jost', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #3a2418; background: #e9e1d5; }
+  .controls { max-width: 7.7in; margin: 16px auto; padding: 0 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .controls input { flex: 1; min-width: 220px; padding: 10px 14px; border-radius: 999px; border: 1px solid #c9b49a; font-size: 15px; font-family: inherit; }
+  .controls button { padding: 10px 20px; border: 0; border-radius: 999px; background: #3a2418; color: #fbf7f0; font-weight: 500; font-size: 15px; font-family: inherit; }
+  .page { width: 7.7in; min-height: 10.1in; margin: 0 auto 30px; background: #f6efe4; padding: 0.55in 0.6in; text-align: center; border: 2px solid #3a2418; outline: 1px solid #3a2418; outline-offset: -14px; }
+  .page h1 { font-family: 'Playfair Display', Georgia, serif; font-weight: 800; font-size: 92px; line-height: 1; margin: 6px 0 0; text-transform: uppercase; }
+  .page h2 { display: flex; align-items: center; gap: 18px; font-size: 22px; letter-spacing: 6px; text-transform: uppercase; font-weight: 500; margin: 18px 0 34px; }
+  .page h2::before, .page h2::after { content: ''; flex: 1; height: 1.5px; background: #3a2418; }
+  #qr { display: inline-block; padding: 18px; background: #fffdf9; border: 1.5px solid #3a2418; }
+  #qr svg, #qr img { width: 4.2in; height: 4.2in; display: block; }
+  .steps { display: flex; justify-content: center; gap: 40px; margin-top: 34px; font-size: 17px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500; }
+  .steps span { display: block; font-size: 30px; margin-bottom: 6px; letter-spacing: 0; }
+  .url { margin-top: 20px; font-size: 14px; color: #8a7363; word-break: break-all; letter-spacing: 1px; }
+  .free { margin-top: 18px; font-family: 'Playfair Display', Georgia, serif; font-weight: 800; font-size: 24px; }
+  @media print { body { background: #f6efe4; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .controls { display: none; } .page { margin: 0; } }
 </style>
 </head>
 <body>
