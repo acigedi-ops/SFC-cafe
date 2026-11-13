@@ -26,6 +26,8 @@
 </head>
 <body>
 <header class="top"><h1 id="shop">SFC Cafe</h1><p>Order status</p></header>
+<div class="wrap" style="padding-bottom:0"><button class="btn block green" id="alertBtn" style="margin-top:16px;display:none">🔔 Tap here so your phone beeps when it's ready</button>
+<div id="alertOn" class="notice" style="display:none;background:#e3f1da;color:#2f5a17">🔔 Alert is on. Keep this page open with your screen on.</div></div>
 <div class="wrap" id="root"><p class="muted" style="text-align:center;margin-top:40px">Loading…</p></div>
 <script>
 const $ = s => document.querySelector(s);
@@ -33,7 +35,32 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = n => '$' + Number(n).toFixed(2);
 const params = new URLSearchParams(location.search);
 const oid = params.get('id');
-let timer;
+let timer, prev = null, audioCtx = null, flashT = null;
+function beep() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  for (let r = 0; r < 3; r++) [880, 1175, 1568].forEach((f, i) => {
+    const st = t + r * 0.9 + i * 0.16, o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = f; g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(0.5, st + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, st + 0.15);
+    o.connect(g).connect(audioCtx.destination); o.start(st); o.stop(st + 0.17);
+  });
+}
+function readyAlert(o) {
+  beep();
+  try { navigator.vibrate && navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) {}
+  try { if (window.Notification && Notification.permission === 'granted') new Notification('Your order #' + o.number + ' is ready! ☕', { body: 'Come pick it up at the counter.', tag: 'sfc-ready' }); } catch (e) {}
+  const base = document.title; let on = false; clearInterval(flashT);
+  flashT = setInterval(() => { document.title = (on = !on) ? '🔔 READY! #' + o.number : base; }, 800);
+  setTimeout(() => { clearInterval(flashT); document.title = base; }, 60000);
+}
+const alertBtn = document.getElementById('alertBtn');
+alertBtn.onclick = async () => {
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); await audioCtx.resume(); const o = audioCtx.createOscillator(), g = audioCtx.createGain(); g.gain.value = 0.0001; o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.05); } catch (e) {}
+  alertBtn.style.display = 'none'; document.getElementById('alertOn').style.display = 'block';
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch (e) {}
+};
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && oid) load(); });
 async function load() {
   const r = await fetch('/api/orders/' + encodeURIComponent(oid) + '/public');
   if (!r.ok) { $('#root').innerHTML = '<div class="notice err">We could not find that order.</div><a class="btn block" href="/">Back to menu</a>'; return; }
@@ -48,6 +75,11 @@ async function load() {
   else if (o.status === 'making') msg = 'We\'re making your order now.';
   else msg = o.ahead ? `Got it! ${o.ahead} order${o.ahead === 1 ? '' : 's'} ahead of you.` : 'Got it! You\'re next.';
   document.body.classList.toggle('ready', o.status === 'ready');
+  if (prev && prev !== 'ready' && o.status === 'ready') readyAlert(o);
+  prev = o.status;
+  const waiting = ['new', 'making'].includes(o.status);
+  if (!waiting) { alertBtn.style.display = 'none'; document.getElementById('alertOn').style.display = 'none'; }
+  else if (document.getElementById('alertOn').style.display !== 'block') alertBtn.style.display = 'block';
   $('#root').innerHTML = `
     ${params.get('new') ? '<div class="notice" style="background:#e3f1da;color:#2f5a17">Thanks, ' + esc(o.firstName) + '! Your order was placed.</div>' : ''}
     <div class="hero card">
@@ -58,7 +90,7 @@ async function load() {
         ${['Received', 'Making', 'Ready'].map((t, i) => `<div class="step ${i <= idx ? 'on' : ''}"><div class="dot">${i <= idx ? '✓' : ''}</div>${t}</div>`).join('')}
       </div>` : ''}
     </div>
-    <p class="muted small" style="text-align:center">${o.sms ? "We'll also text you when it's ready. " : ''}Keep this page open or check back anytime. It updates by itself.<br>Pay at pickup. Show this number at the counter.</p>
+    <p class="muted small" style="text-align:center">${o.sms ? "We'll also text you when it's ready. " : ''}Keep this page open. It updates by itself and beeps when your order is ready.<br>Pay at pickup. Show this number at the counter.</p>
     <div class="items card">
       ${o.items.map(i => `<div class="line"><b>${i.qty}× ${esc(i.name)}</b>
         <div class="muted small">${esc(i.options.map(x => x.choice).join(', '))}${i.note ? '<br>Note: ' + esc(i.note) : ''}</div></div>`).join('')}
@@ -69,7 +101,7 @@ async function load() {
   if (['done', 'cancelled'].includes(o.status)) clearInterval(timer);
 }
 if (!oid) location.href = '/';
-else { load(); timer = setInterval(load, 5000); }
+else { load(); timer = setInterval(load, 3000); }
 </script>
 </body>
 </html>

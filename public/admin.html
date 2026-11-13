@@ -45,6 +45,7 @@
   <div class="tabs">
     <button data-tab="menu" class="on">Menu</button>
     <button data-tab="settings">Settings</button>
+    <button data-tab="orders">Orders</button>
     <button data-tab="today">Today</button>
   </div>
 
@@ -81,6 +82,16 @@
     </div>
   </section>
 
+  <section class="panel" id="p-orders">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <label class="field" style="margin:0">Day<select id="oDay"></select></label>
+      <label class="field" style="margin:0;flex:1;min-width:200px">Search all days<input id="oQ" placeholder="Name, phone or order #"></label>
+      <button class="btn secondary" id="oCsv">Download spreadsheet</button>
+    </div>
+    <div class="card" style="padding:8px 16px;margin-top:16px;overflow-x:auto"><table id="oTable"></table></div>
+    <p class="small muted">Orders are kept for 30 days.</p>
+  </section>
+
   <section class="panel" id="p-today">
     <label class="field" style="max-width:240px">Day<select id="daySel"></select></label>
     <div class="stats" id="stats"></div>
@@ -105,6 +116,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === 'p-' + b.dataset.tab));
   if (b.dataset.tab === 'today') loadSummary();
+  if (b.dataset.tab === 'orders') loadOrders();
 });
 
 // ---------- Menu editor ----------
@@ -263,6 +275,34 @@ async function loadSummary(day) {
   ].map(([k, v]) => `<div class="stat card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
   $('#pop').innerHTML = s.popular.length ? s.popular.map(p => `<tr><td>${esc(p.name)}</td><td style="text-align:right"><b>${p.qty}</b></td></tr>`).join('') : '<tr><td class="muted">No orders yet.</td></tr>';
 }
+// ---------- Orders ----------
+let lastOrders = [];
+const ST = { new: 'New', making: 'Making', ready: 'Ready', done: 'Picked up', cancelled: 'Cancelled' };
+const fmtPhone = p => !p ? '–' : p.length === 10 ? `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}` : p;
+const tm = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const itemsText = o => o.items.map(i => `${i.qty}x ${i.name}${i.options.length ? ' (' + i.options.map(x => x.choice).join(', ') + ')' : ''}${i.note ? ' - ' + i.note : ''}`).join('; ');
+async function loadOrders(day) {
+  const q = $('#oQ').value.trim();
+  const j = await api('/api/history?' + (q ? 'q=' + encodeURIComponent(q) : 'day=' + (day || $('#oDay').value || '')));
+  lastOrders = j.orders;
+  const days = j.days.includes(j.day) ? j.days : [j.day, ...j.days];
+  $('#oDay').innerHTML = days.map(d => `<option ${d === j.day ? 'selected' : ''}>${d}</option>`).join('');
+  $('#oDay').disabled = !!q;
+  $('#oTable').innerHTML = j.orders.length ? `<tr><td><b>#</b></td><td><b>Time</b></td><td><b>Name</b></td><td><b>Phone</b></td><td><b>Order</b></td><td><b>Total</b></td><td><b>Status</b></td></tr>` + j.orders.map(o => `<tr>
+    <td><b>${o.number}</b></td><td style="white-space:nowrap">${q ? o.day + '<br>' : ''}${tm(o.createdAt)}</td><td>${esc(o.firstName)} ${esc(o.lastName)}</td>
+    <td style="white-space:nowrap">${fmtPhone(o.phone)}</td><td>${esc(itemsText(o))}${o.note ? '<br><span class="muted">📝 ' + esc(o.note) + '</span>' : ''}</td>
+    <td>${fmt(o.total)}</td><td>${ST[o.status]}</td></tr>`).join('') : `<tr><td class="muted">${q ? 'No matching orders.' : 'No orders this day.'}</td></tr>`;
+}
+$('#oDay').onchange = () => loadOrders($('#oDay').value);
+let oT; $('#oQ').oninput = () => { clearTimeout(oT); oT = setTimeout(() => loadOrders(), 300); };
+$('#oCsv').onclick = () => {
+  const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const rows = [['Day', 'Order #', 'Time', 'First name', 'Last name', 'Phone', 'Items', 'Order note', 'Total', 'Status']]
+    .concat(lastOrders.map(o => [o.day, o.number, tm(o.createdAt), o.firstName, o.lastName, fmtPhone(o.phone), itemsText(o), o.note, o.total.toFixed(2), ST[o.status]]));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(cell).join(',')).join('\n')], { type: 'text/csv' }));
+  a.download = 'sfc-cafe-orders-' + ($('#oQ').value.trim() ? 'search' : $('#oDay').value) + '.csv'; a.click();
+};
 $('#logout').onclick = async e => { e.preventDefault(); await fetch('/api/logout'); location.href = '/login'; };
 
 api('/api/admin/menu').then(j => {

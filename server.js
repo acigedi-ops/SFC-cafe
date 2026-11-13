@@ -130,8 +130,8 @@ async function sendSms(order) {
     .replace(/\{last\}/g, order.lastName)
     .replace(/\{number\}/g, order.number)
     .replace(/\{shop\}/g, store.settings.shopName);
-  if (!smsEnabled()) {
-    order.sms = { status: 'skipped', note: 'Texting is not set up yet', at: Date.now() };
+  if (!smsEnabled() || !order.phone) {
+    order.sms = { status: 'skipped', note: order.phone ? 'Texting is not set up yet' : 'No phone number', at: Date.now() };
     console.log(`[sms skipped] to ${order.phone}: ${body}`);
     return;
   }
@@ -192,7 +192,8 @@ function buildOrder(body) {
   let phone = String(body.phone || '').replace(/\D/g, '');
   if (phone.length === 11 && phone[0] === '1') phone = phone.slice(1);
   if (!firstName || !lastName) throw new Error('Please enter your first and last name.');
-  if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(phone)) throw new Error('Please enter a valid 10-digit phone number.');
+  if (smsEnabled() && !/^[2-9]\d{2}[2-9]\d{6}$/.test(phone)) throw new Error('Please enter a valid 10-digit phone number.');
+  if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(phone)) phone = '';
   const lines = Array.isArray(body.items) ? body.items : [];
   if (!lines.length) throw new Error('Your cart is empty.');
   const itemsById = new Map();
@@ -315,7 +316,7 @@ async function handle(req, res) {
     if (p === '/api/menu' && req.method === 'GET') {
       const s = store.settings;
       return send(res, 200, { shopName: s.shopName, open: s.open, paused: s.paused, closedMessage: s.closedMessage,
-        maxItems: s.maxItems, menu: publicMenu(), waiting: store.orders.filter(o => o.status === 'new' || o.status === 'making').length });
+        maxItems: s.maxItems, sms: smsEnabled(), menu: publicMenu(), waiting: store.orders.filter(o => o.status === 'new' || o.status === 'making').length });
     }
     if (p === '/api/orders' && req.method === 'POST') {
       const body = await readBody(req);
@@ -375,6 +376,16 @@ async function handle(req, res) {
       if (status === 'ready' && prev !== 'ready') { o.readyAt = Date.now(); await sendSms(o); }
       save(); broadcast('update', o);
       return send(res, 200, o);
+    }
+    if (p === '/api/history' && req.method === 'GET') {
+      const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+      const day = url.searchParams.get('day') || today();
+      const qDigits = q.replace(/\D/g, '');
+      let list = q
+        ? store.orders.filter(o => (o.firstName + ' ' + o.lastName).toLowerCase().includes(q) || (qDigits.length >= 3 && o.phone.includes(qDigits)) || String(o.number) === q.replace('#', ''))
+        : store.orders.filter(o => o.day === day);
+      list = list.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 500);
+      return send(res, 200, { day, q, orders: list, days: [...new Set(store.orders.map(o => o.day))].sort().reverse() });
     }
     if (p === '/api/settings/quick' && req.method === 'POST') {
       const b = await readBody(req);

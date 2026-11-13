@@ -57,10 +57,11 @@
   <button class="btn secondary" id="tOpen"></button>
   <button class="btn secondary" id="tPause"></button>
   <button class="btn secondary" id="tSold">Sold out</button>
+  <button class="btn secondary" id="tHist">Past orders</button>
   <a class="btn secondary" href="/admin" id="adminLink" style="display:none">Admin</a>
 </div>
 <div id="conn">Reconnecting… new orders may be delayed</div>
-<div id="smsWarn" class="notice" style="display:none;margin:12px 14px 0">Texting is not set up yet, so customers won't get a text when you tap Ready. They can still see their status on their phone. See the setup guide to turn on texts.</div>
+<div id="smsWarn" class="notice" style="display:none;margin:12px 14px 0">Texting is off, so customers don't enter a phone number. Their phone screen turns green when you tap Ready, so call out their name and order number too.</div>
 <div id="banner">New order!</div>
 <div class="cols">
   <section class="col"><h2>New <span class="count" id="cNew">0</span></h2><div id="new"></div></section>
@@ -76,6 +77,12 @@
   <ul class="so-list" id="soList"></ul>
 </div>
 
+<div class="sheet" id="histSheet" style="max-width:820px">
+  <button class="close-x" data-close>×</button>
+  <h2>Past orders</h2>
+  <input id="histQ" placeholder="Search by name or order #" style="width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;margin:10px 0;font-size:16px">
+  <div id="histList"></div>
+</div>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -104,7 +111,7 @@ function ago(ts) { const m = Math.floor((Date.now() - ts) / 60000); return m < 1
 function card(o) {
   const mins = (Date.now() - o.createdAt) / 60000;
   const smsLine = o.status === 'ready' && o.sms ? `<div class="sms ${o.sms.status}">${
-    o.sms.status === 'sent' ? '✓ Text sent' : o.sms.status === 'failed' ? '⚠ Text failed: ' + esc(o.sms.note) : 'Text not sent (texting not set up)'}</div>` : '';
+    o.sms.status === 'sent' ? '✓ Text sent' : o.sms.status === 'failed' ? '⚠ Text failed: ' + esc(o.sms.note) : 'Call out their name: their screen shows Ready'}</div>` : '';
   let actions = '';
   if (o.status === 'new') actions = `<button class="btn" data-a="making" data-id="${o.id}">Start making</button>
       <button class="btn green" data-a="ready" data-id="${o.id}">Ready ✓</button>
@@ -113,7 +120,7 @@ function card(o) {
       <button class="btn mini ghost" data-a="new" data-id="${o.id}">Back</button>
       <button class="btn mini ghost" data-a="cancelled" data-id="${o.id}">${armed[o.id] ? 'Tap again to cancel' : 'Cancel'}</button>`;
   else if (o.status === 'ready') actions = `<button class="btn" data-a="done" data-id="${o.id}">Picked up</button>
-      ${smsOn ? `<button class="btn mini ghost" data-a="resend" data-id="${o.id}">Resend text</button>` : ''}
+      ${smsOn && o.phone ? `<button class="btn mini ghost" data-a="resend" data-id="${o.id}">Resend text</button>` : ''}
       <button class="btn mini ghost" data-a="making" data-id="${o.id}">Back</button>`;
   return `<div class="ocard card ${o.status} ${fresh.has(o.id) ? 'fresh' : ''}">
     <div class="ohead"><span class="onum">#${o.number}</span><span class="otime ${mins > 10 && o.status !== 'ready' ? 'late' : ''}" data-ts="${o.createdAt}">${ago(o.createdAt)}</span></div>
@@ -187,8 +194,28 @@ async function openSold() {
   $('#bg').classList.add('show'); $('#soSheet').classList.add('show');
 }
 $('#tSold').onclick = openSold;
-const hide = () => { $('#bg').classList.remove('show'); $('#soSheet').classList.remove('show'); };
-$('#bg').onclick = hide; document.querySelector('[data-close]').onclick = hide;
+const STATUS = { new: 'New', making: 'Making', ready: 'Ready', done: 'Picked up', cancelled: 'Cancelled' };
+const clock = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+async function loadHist() {
+  const q = $('#histQ').value.trim();
+  const r = await fetch('/api/history' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  if (r.status === 401) return location.href = '/login?next=/board';
+  const j = await r.json();
+  $('#histList').innerHTML = j.orders.length ? j.orders.map(o => `<div class="ocard card ${o.status === 'cancelled' ? '' : o.status}" style="margin-bottom:10px">
+    <div class="ohead"><span><b style="font-size:20px">#${o.number}</b> &nbsp;${esc(o.firstName)} ${esc(o.lastName)}</span>
+    <span class="otime">${q ? o.day + ' · ' : ''}${clock(o.createdAt)} · <b>${STATUS[o.status]}</b></span></div>
+    <div class="muted" style="margin:6px 0">${o.items.map(i => `${i.qty}× ${esc(i.name)}${i.options.length ? ' (' + esc(i.options.map(x => x.choice).join(', ')) + ')' : ''}${i.note ? ' – ' + esc(i.note) : ''}`).join('<br>')}${o.note ? '<br>📝 ' + esc(o.note) : ''}</div>
+    ${['done', 'cancelled'].includes(o.status) ? `<button class="btn mini ghost" data-back="${o.id}">Bring back to board</button>` : ''}</div>`).join('')
+    : `<div class="empty">${q ? 'No matching orders.' : 'No orders yet today.'}</div>`;
+  document.querySelectorAll('[data-back]').forEach(b => b.onclick = async () => {
+    const r = await fetch(`/api/orders/${b.dataset.back}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'making' }) });
+    if (r.ok) { upsert(await r.json()); loadHist(); }
+  });
+}
+let histT; $('#histQ').oninput = () => { clearTimeout(histT); histT = setTimeout(loadHist, 300); };
+$('#tHist').onclick = () => { $('#histQ').value = ''; loadHist(); $('#bg').classList.add('show'); $('#histSheet').classList.add('show'); };
+const hide = () => { $('#bg').classList.remove('show'); document.querySelectorAll('.sheet').forEach(x => x.classList.remove('show')); };
+$('#bg').onclick = hide; document.querySelectorAll('[data-close]').forEach(b => b.onclick = hide);
 
 fetch('/api/me').then(r => r.json()).then(j => { if (j.role === 'admin') $('#adminLink').style.display = ''; });
 setInterval(() => document.querySelectorAll('[data-ts]').forEach(el => { el.textContent = ago(+el.dataset.ts); }), 30000);
