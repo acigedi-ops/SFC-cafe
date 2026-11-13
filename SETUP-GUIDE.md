@@ -8,7 +8,7 @@ This guide is for someone who is not technical. It takes about 30 minutes, plus 
 - The iPad showing every order as it comes in.
 - Customers get a text when you tap **Ready**.
 
-**Monthly cost:** about $7.25 for hosting (Render) and about $2–4 for texting (Twilio). Ordering is free for customers, and they pay at pickup.
+**Monthly cost:** about $7.25 for hosting (Render) and about $2–4 for texting (Twilio). Ordering is free for customers.
 
 ---
 

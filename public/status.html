@@ -105,12 +105,12 @@ async function load() {
         ${['Received', 'Making', 'Ready'].map((t, i) => `<div class="step ${i <= idx ? 'on' : ''}"><div class="dot">${i <= idx ? '✓' : ''}</div>${t}</div>`).join('')}
       </div>` : ''}
     </div>
-    <p class="muted small" style="text-align:center">${o.sms ? "We'll also text you when it's ready. " : ''}Keep this page open. It updates by itself and beeps when your order is ready.<br>Pay at pickup. Show this number at the counter.</p>
+    <p class="muted small" style="text-align:center">${o.sms ? "We'll also text you when it's ready. " : ''}Keep this page open. It updates by itself and beeps when your order is ready.<br>Show this number at the counter.</p>
     <div class="items card"><h3>Your order</h3>
       ${o.items.map(i => `<div class="line"><b>${i.qty}× ${esc(i.name)}</b>
         <div class="muted small">${esc(i.options.map(x => x.choice).join(', '))}${i.note ? '<br>Note: ' + esc(i.note) : ''}</div></div>`).join('')}
       ${o.note ? `<div class="line"><span class="muted small">Order note:</span> ${esc(o.note)}</div>` : ''}
-      <div class="line sum" style="display:flex;justify-content:space-between;align-items:baseline"><b>Total (pay at pickup)</b><b>${fmt(o.total)}</b></div>
+      <div class="line sum" style="display:flex;justify-content:space-between;align-items:baseline"><b>Total</b><b>${fmt(o.total)}</b></div>
     </div>
     <p class="again"><a href="/">Order something else</a></p>`;
   if (['done', 'cancelled'].includes(o.status)) clearInterval(timer);
