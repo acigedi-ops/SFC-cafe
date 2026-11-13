@@ -1,0 +1,31 @@
+# One-click setup for Render (https://render.com).
+# Starter plan + 1 GB disk keeps your menu and orders safe across restarts (~$7.25/month).
+services:
+  - type: web
+    name: sfc-cafe
+    runtime: node
+    plan: starter
+    buildCommand: "echo no build needed"
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: TIMEZONE
+        value: America/Los_Angeles
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: STAFF_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false

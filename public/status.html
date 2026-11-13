@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6b3e26">
+<title>Your order – SFC Cafe</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .hero { text-align: center; padding: 28px 16px 22px; margin-top: 18px; }
+  .hero .lbl { text-transform: uppercase; letter-spacing: 1.5px; font-size: 13px; color: var(--muted); font-weight: 700; }
+  .hero .num { font-size: 76px; font-weight: 800; line-height: 1; margin: 6px 0 8px; color: var(--brand); }
+  .hero .msg { font-size: 20px; font-weight: 700; }
+  .steps { display: flex; justify-content: space-between; margin: 22px 4px 4px; position: relative; }
+  .steps::before { content: ''; position: absolute; top: 15px; left: 12%; right: 12%; height: 4px; background: var(--line); border-radius: 2px; }
+  .step { flex: 1; text-align: center; position: relative; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .dot { width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 4px solid var(--line); margin: 0 auto 6px; display: grid; place-items: center; font-size: 15px; }
+  .step.on { color: var(--ink); }
+  .step.on .dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ready .hero { background: var(--accent); color: #fff; }
+  .ready .hero .num, .ready .hero .lbl { color: #fff; }
+  .items { padding: 6px 16px; margin-top: 14px; }
+  .line { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .line:last-child { border: 0; }
+</style>
+</head>
+<body>
+<header class="top"><h1 id="shop">SFC Cafe</h1><p>Order status</p></header>
+<div class="wrap" id="root"><p class="muted" style="text-align:center;margin-top:40px">Loading…</p></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => '$' + Number(n).toFixed(2);
+const params = new URLSearchParams(location.search);
+const oid = params.get('id');
+let timer;
+async function load() {
+  const r = await fetch('/api/orders/' + encodeURIComponent(oid) + '/public');
+  if (!r.ok) { $('#root').innerHTML = '<div class="notice err">We could not find that order.</div><a class="btn block" href="/">Back to menu</a>'; return; }
+  const o = await r.json();
+  $('#shop').textContent = o.shopName;
+  const steps = ['new', 'making', 'ready'];
+  const idx = o.status === 'done' ? 3 : steps.indexOf(o.status);
+  let msg;
+  if (o.status === 'cancelled') msg = 'This order was cancelled. Please see the counter.';
+  else if (o.status === 'done') msg = 'Picked up. Enjoy! ☕';
+  else if (o.status === 'ready') msg = `${esc(o.firstName)}, your order is ready! 🎉`;
+  else if (o.status === 'making') msg = 'We\'re making your order now.';
+  else msg = o.ahead ? `Got it! ${o.ahead} order${o.ahead === 1 ? '' : 's'} ahead of you.` : 'Got it! You\'re next.';
+  document.body.classList.toggle('ready', o.status === 'ready');
+  $('#root').innerHTML = `
+    ${params.get('new') ? '<div class="notice" style="background:#e3f1da;color:#2f5a17">Thanks, ' + esc(o.firstName) + '! Your order was placed.</div>' : ''}
+    <div class="hero card">
+      <div class="lbl">Confirmation number</div>
+      <div class="num">#${o.number}</div>
+      <div class="msg">${msg}</div>
+      ${o.status !== 'cancelled' ? `<div class="steps">
+        ${['Received', 'Making', 'Ready'].map((t, i) => `<div class="step ${i <= idx ? 'on' : ''}"><div class="dot">${i <= idx ? '✓' : ''}</div>${t}</div>`).join('')}
+      </div>` : ''}
+    </div>
+    <p class="muted small" style="text-align:center">${o.sms ? "We'll also text you when it's ready. " : ''}Keep this page open or check back anytime. It updates by itself.<br>Pay at pickup. Show this number at the counter.</p>
+    <div class="items card">
+      ${o.items.map(i => `<div class="line"><b>${i.qty}× ${esc(i.name)}</b>
+        <div class="muted small">${esc(i.options.map(x => x.choice).join(', '))}${i.note ? '<br>Note: ' + esc(i.note) : ''}</div></div>`).join('')}
+      ${o.note ? `<div class="line"><span class="muted small">Order note:</span> ${esc(o.note)}</div>` : ''}
+      <div class="line" style="display:flex;justify-content:space-between"><b>Total (pay at pickup)</b><b>${fmt(o.total)}</b></div>
+    </div>
+    <p style="text-align:center;margin-top:20px"><a href="/">Order something else</a></p>`;
+  if (['done', 'cancelled'].includes(o.status)) clearInterval(timer);
+}
+if (!oid) location.href = '/';
+else { load(); timer = setInterval(load, 5000); }
+</script>
+</body>
+</html>

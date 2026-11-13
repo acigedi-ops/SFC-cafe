@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff login – SFC Cafe</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top"><h1>SFC Cafe</h1><p>Staff login</p></header>
+<div class="wrap" style="max-width:420px">
+  <form id="f" class="card" style="padding:20px;margin-top:24px">
+    <label class="field">Password<input type="password" name="password" autocomplete="current-password" required autofocus></label>
+    <div id="err" class="notice err" style="display:none"></div>
+    <button class="btn block">Log in</button>
+  </form>
+  <p class="muted small" style="text-align:center">The staff password opens the order board. The admin password opens everything.</p>
+</div>
+<script>
+document.getElementById('f').onsubmit = async e => {
+  e.preventDefault();
+  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: e.target.password.value }) });
+  const j = await r.json();
+  if (!r.ok) { const el = document.getElementById('err'); el.textContent = j.error; el.style.display = 'block'; return; }
+  let next = new URLSearchParams(location.search).get('next') || (j.role === 'admin' ? '/admin' : '/board');
+  if (!next.startsWith('/') || next.startsWith('//')) next = '/board';
+  if (j.role === 'staff' && next !== '/board') next = '/board';
+  location.href = next;
+};
+</script>
+</body>
+</html>
