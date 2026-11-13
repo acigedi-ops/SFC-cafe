@@ -3,31 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#6b3e26">
+<meta name="theme-color" content="#f6efe4">
 <title>Your order – SFC Cafe</title>
 <link rel="stylesheet" href="/style.css">
 <style>
-  .hero { text-align: center; padding: 28px 16px 22px; margin-top: 18px; }
-  .hero .lbl { text-transform: uppercase; letter-spacing: 1.5px; font-size: 13px; color: var(--muted); font-weight: 700; }
-  .hero .num { font-size: 76px; font-weight: 800; line-height: 1; margin: 6px 0 8px; color: var(--brand); }
-  .hero .msg { font-size: 20px; font-weight: 700; }
-  .steps { display: flex; justify-content: space-between; margin: 22px 4px 4px; position: relative; }
-  .steps::before { content: ''; position: absolute; top: 15px; left: 12%; right: 12%; height: 4px; background: var(--line); border-radius: 2px; }
-  .step { flex: 1; text-align: center; position: relative; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .dot { width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 4px solid var(--line); margin: 0 auto 6px; display: grid; place-items: center; font-size: 15px; }
+  header.top { padding-top: 26px; }
+  header.top h1 { font-size: clamp(36px, 10vw, 48px); }
+  .hero { position: relative; text-align: center; padding: 30px 20px 26px; margin-top: 22px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow); }
+
+  .hero .lbl { text-transform: uppercase; letter-spacing: 3px; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .hero .num { font-family: var(--serif); font-size: 84px; font-weight: 800; line-height: 1; margin: 8px 0 22px; }
+  .hero .perf { position: relative; border-top: 2px dashed var(--line); margin: 0 -20px 20px; }
+  .hero .perf::before, .hero .perf::after { content: ''; position: absolute; top: -13px; width: 24px; height: 24px; border-radius: 50%; background: var(--bg); }
+  .hero .perf::before { left: -12px; } .hero .perf::after { right: -12px; }
+  .hero .msg { font-family: var(--serif); font-size: 24px; font-weight: 700; line-height: 1.25; }
+  .steps { display: flex; justify-content: space-between; margin: 24px 4px 2px; position: relative; }
+  .steps::before { content: ''; position: absolute; top: 14px; left: 16%; right: 16%; height: 2px; background: var(--line); }
+  .step { flex: 1; text-align: center; position: relative; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500; color: var(--muted); }
+  .dot { width: 30px; height: 30px; border-radius: 50%; background: var(--card); border: 2px solid var(--rule); margin: 0 auto 8px; display: grid; place-items: center; font-size: 14px; }
   .step.on { color: var(--ink); }
-  .step.on .dot { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .ready .hero { background: var(--accent); color: #fff; }
-  .ready .hero .num, .ready .hero .lbl { color: #fff; }
-  .items { padding: 6px 16px; margin-top: 14px; }
-  .line { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .step.on .dot { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .ready .hero { background: var(--accent); color: #fff; animation: pop .5s ease; }
+  .ready .hero .num, .ready .hero .lbl, .ready .step, .ready .step.on { color: #fff; }
+  .ready .hero .perf { border-color: rgba(255, 255, 255, .35); }
+  .ready .step.on .dot { background: #fff; border-color: #fff; color: var(--accent); }
+  @keyframes pop { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+  .items { padding: 6px 20px; margin-top: 16px; }
+  .items h3 { margin: 14px 0 4px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .line { padding: 12px 0; border-bottom: 1px dashed var(--line); }
   .line:last-child { border: 0; }
+  .line b { font-weight: 500; font-size: 17px; }
+  .sum b:last-child { font-family: var(--serif); font-size: 22px; }
+  .again { text-align: center; margin-top: 24px; }
+  .again a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule); padding-bottom: 2px; letter-spacing: 2px; text-transform: uppercase; font-size: 13px; font-weight: 500; }
 </style>
 </head>
 <body>
-<header class="top"><h1 id="shop">SFC Cafe</h1><p>Order status</p></header>
+<header class="top"><h1 id="shop">SFC Cafe</h1><p>Your order</p></header>
 <div class="wrap" style="padding-bottom:0"><button class="btn block green" id="alertBtn" style="margin-top:16px;display:none">🔔 Tap here so your phone beeps when it's ready</button>
-<div id="alertOn" class="notice" style="display:none;background:#e3f1da;color:#2f5a17">🔔 Alert is on. Keep this page open with your screen on.</div></div>
+<div id="alertOn" class="notice" style="display:none;background:#e2ead8;color:#3c5527">🔔 Alert is on. Keep this page open with your screen on.</div></div>
 <div class="wrap" id="root"><p class="muted" style="text-align:center;margin-top:40px">Loading…</p></div>
 <script>
 const $ = s => document.querySelector(s);
@@ -81,23 +95,24 @@ async function load() {
   if (!waiting) { alertBtn.style.display = 'none'; document.getElementById('alertOn').style.display = 'none'; }
   else if (document.getElementById('alertOn').style.display !== 'block') alertBtn.style.display = 'block';
   $('#root').innerHTML = `
-    ${params.get('new') ? '<div class="notice" style="background:#e3f1da;color:#2f5a17">Thanks, ' + esc(o.firstName) + '! Your order was placed.</div>' : ''}
+    ${params.get('new') ? '<div class="notice" style="background:#e2ead8;color:#3c5527">Thanks, ' + esc(o.firstName) + '! Your order was placed.</div>' : ''}
     <div class="hero card">
       <div class="lbl">Confirmation number</div>
       <div class="num">#${o.number}</div>
+      <div class="perf"></div>
       <div class="msg">${msg}</div>
       ${o.status !== 'cancelled' ? `<div class="steps">
         ${['Received', 'Making', 'Ready'].map((t, i) => `<div class="step ${i <= idx ? 'on' : ''}"><div class="dot">${i <= idx ? '✓' : ''}</div>${t}</div>`).join('')}
       </div>` : ''}
     </div>
     <p class="muted small" style="text-align:center">${o.sms ? "We'll also text you when it's ready. " : ''}Keep this page open. It updates by itself and beeps when your order is ready.<br>Pay at pickup. Show this number at the counter.</p>
-    <div class="items card">
+    <div class="items card"><h3>Your order</h3>
       ${o.items.map(i => `<div class="line"><b>${i.qty}× ${esc(i.name)}</b>
         <div class="muted small">${esc(i.options.map(x => x.choice).join(', '))}${i.note ? '<br>Note: ' + esc(i.note) : ''}</div></div>`).join('')}
       ${o.note ? `<div class="line"><span class="muted small">Order note:</span> ${esc(o.note)}</div>` : ''}
-      <div class="line" style="display:flex;justify-content:space-between"><b>Total (pay at pickup)</b><b>${fmt(o.total)}</b></div>
+      <div class="line sum" style="display:flex;justify-content:space-between;align-items:baseline"><b>Total (pay at pickup)</b><b>${fmt(o.total)}</b></div>
     </div>
-    <p style="text-align:center;margin-top:20px"><a href="/">Order something else</a></p>`;
+    <p class="again"><a href="/">Order something else</a></p>`;
   if (['done', 'cancelled'].includes(o.status)) clearInterval(timer);
 }
 if (!oid) location.href = '/';

@@ -7,6 +7,9 @@
 <link rel="stylesheet" href="/style.css">
 <style>
   .wrap { max-width: 860px; }
+  header.top h1 { font-size: 40px; }
+  header.top p { max-width: none; letter-spacing: 1.5px; flex-wrap: wrap; gap: 6px 10px; }
+  header.top p::before, header.top p::after { display: none; }
   .tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
   .tabs button { border: 0; padding: 10px 16px; border-radius: 99px; background: #efe5db; font-weight: 700; }
   .tabs button.on { background: var(--brand); color: #fff; }
@@ -40,7 +43,7 @@
 </style>
 </head>
 <body>
-<header class="top"><h1>SFC Cafe Admin</h1><p><a href="/board" style="color:#fff">Order board</a> · <a href="/" style="color:#fff" target="_blank">Order page</a> · <a href="/sign" style="color:#fff" target="_blank">Print QR sign</a> · <a href="#" id="logout" style="color:#fff">Log out</a></p></header>
+<header class="top"><h1>SFC Cafe Admin</h1><p><a href="/board">Order board</a> · <a href="/" target="_blank">Order page</a> · <a href="/sign" target="_blank">Print QR sign</a> · <a href="#" id="logout">Log out</a></p></header>
 <div class="wrap">
   <div class="tabs">
     <button data-tab="menu" class="on">Menu</button>
