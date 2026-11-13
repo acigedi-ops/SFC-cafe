@@ -26,8 +26,8 @@
 <body>
 <div class="controls">
   <input id="url" aria-label="Order page address">
-  <button onclick="draw()">Update QR</button>
-  <button onclick="window.print()">Print</button>
+  <button id="drawBtn">Update QR</button>
+  <button id="printBtn">Print</button>
 </div>
 <div class="page">
   <h1 id="shop">SFC Cafe</h1>
@@ -50,6 +50,8 @@ function draw() {
   document.getElementById('urlText').textContent = u.value.trim();
 }
 fetch('/api/menu').then(r => r.json()).then(j => { document.getElementById('shop').textContent = j.shopName; });
+document.getElementById('drawBtn').addEventListener('click', draw);
+document.getElementById('printBtn').addEventListener('click', () => window.print());
 draw();
 </script>
 </body>
