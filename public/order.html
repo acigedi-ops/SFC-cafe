@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6b3e26">
+<title>SFC Cafe – Order</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .cat-tabs { position: sticky; top: 0; z-index: 10; background: var(--bg); display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; margin: 0 -16px; border-bottom: 1px solid var(--line); }
+  .cat-tabs a { flex: none; padding: 8px 14px; border-radius: 99px; background: #efe5db; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14px; }
+  h2.cat { margin: 24px 0 10px; font-size: 20px; }
+  .item { display: flex; gap: 12px; align-items: center; padding: 14px; margin-bottom: 10px; width: 100%; text-align: left; border: 0; }
+  .item img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex: none; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .name { font-weight: 700; font-size: 17px; }
+  .item .desc { color: var(--muted); font-size: 14px; }
+  .item .price { font-weight: 700; white-space: nowrap; }
+  .item.out { opacity: .55; }
+  .group { margin: 18px 0; }
+  .group h3 { margin: 0 0 8px; font-size: 15px; display: flex; justify-content: space-between; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1.5px solid var(--line); background: #fff; border-radius: 99px; padding: 9px 14px; font-weight: 600; font-size: 15px; }
+  .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .qty { display: flex; align-items: center; gap: 14px; margin: 18px 0; }
+  .qty button { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; font-size: 22px; }
+  .qty span { font-size: 20px; font-weight: 700; min-width: 24px; text-align: center; }
+  .cartbar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 30%); z-index: 20; display: none; }
+  .cartbar.show { display: block; }
+  .cartbar .btn { max-width: 608px; margin: 0 auto; display: flex; justify-content: space-between; }
+  .line { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .line .opts { color: var(--muted); font-size: 13px; }
+  .line .rm { border: 0; background: none; color: var(--warn); font-size: 13px; padding: 4px 0; }
+  .total { display: flex; justify-content: space-between; font-weight: 700; font-size: 18px; margin: 14px 0 4px; }
+  .recent { display: block; margin: 14px 0 0; padding: 12px 14px; text-decoration: none; color: var(--ink); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 id="shop">SFC Cafe</h1>
+  <p>Order ahead · Pay at pickup</p>
+</header>
+<div class="wrap">
+  <a id="recent" class="recent card" style="display:none"></a>
+  <div id="closed" class="notice" style="display:none"></div>
+  <nav class="cat-tabs" id="tabs"></nav>
+  <div id="menu"><p class="muted" style="text-align:center;margin-top:40px">Loading menu…</p></div>
+</div>
+
+<div class="cartbar" id="cartbar">
+  <button class="btn block" id="viewCart"><span id="cartCount">View order</span><span id="cartTotal"></span></button>
+</div>
+
+<div class="sheet-bg" id="bg"></div>
+
+<!-- Item sheet -->
+<div class="sheet" id="itemSheet" role="dialog" aria-modal="true">
+  <button class="close-x" data-close aria-label="Close">×</button>
+  <h2 id="isName"></h2>
+  <div class="muted" id="isDesc"></div>
+  <div id="isGroups"></div>
+  <label class="field">Note for this drink (optional)
+    <input id="isNote" maxlength="140" placeholder="e.g. extra hot, light ice">
+  </label>
+  <div class="qty"><button id="qMinus" aria-label="Less">−</button><span id="qVal">1</span><button id="qPlus" aria-label="More">+</button></div>
+  <div id="isErr" class="notice err" style="display:none"></div>
+  <button class="btn block" id="isAdd">Add to order</button>
+</div>
+
+<!-- Cart / checkout sheet -->
+<div class="sheet" id="cartSheet" role="dialog" aria-modal="true">
+  <button class="close-x" data-close aria-label="Close">×</button>
+  <h2>Your order</h2>
+  <div id="lines"></div>
+  <div class="total"><span>Total</span><span id="sumTotal"></span></div>
+  <p class="muted small" style="margin-top:0">You'll pay when you pick up your order.</p>
+  <form id="checkout" autocomplete="on">
+    <label class="field">First name<input name="firstName" autocomplete="given-name" required maxlength="40"></label>
+    <label class="field">Last name<input name="lastName" autocomplete="family-name" required maxlength="40"></label>
+    <label class="field">Phone number<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(555) 555-5555"></label>
+    <p class="muted small" style="margin-top:-4px">We'll text you when your order is ready.</p>
+    <label class="field">Note for the order (optional)<textarea name="note" maxlength="200" placeholder="Anything we should know?"></textarea></label>
+    <div class="hp"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div id="coErr" class="notice err" style="display:none"></div>
+    <button class="btn block" id="placeBtn" type="submit">Place order</button>
+  </form>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const fmt = n => '$' + Number(n).toFixed(2);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+let data = null, cart = store.get('sfc_cart', []), current = null, qty = 1, picks = {};
+
+async function load() {
+  const r = await fetch('/api/menu');
+  data = await r.json();
+  document.title = data.shopName + ' – Order';
+  $('#shop').textContent = data.shopName;
+  const closed = $('#closed');
+  if (!data.open) { closed.textContent = data.closedMessage || 'We are closed right now.'; closed.style.display = 'block'; }
+  else if (data.paused) { closed.textContent = 'We are very busy right now and have paused new orders for a few minutes. Please check back shortly!'; closed.style.display = 'block'; }
+  else if (data.waiting > 0) { closed.className = 'notice'; closed.textContent = `${data.waiting} order${data.waiting === 1 ? '' : 's'} ahead of you right now.`; closed.style.display = 'block'; }
+  else closed.style.display = 'none';
+  render();
+  // drop cart lines that are no longer on menu
+  const ids = new Set(data.menu.flatMap(c => c.items.filter(i => !i.soldOut).map(i => i.id)));
+  cart = cart.filter(l => ids.has(l.itemId)); saveCart();
+}
+function render() {
+  $('#tabs').innerHTML = data.menu.map(c => `<a href="#cat-${c.id}">${esc(c.name)}</a>`).join('');
+  $('#menu').innerHTML = data.menu.map(c => `
+    <h2 class="cat" id="cat-${c.id}">${esc(c.name)}</h2>
+    ${c.items.map(i => `
+      <button class="item card ${i.soldOut ? 'out' : ''}" data-id="${i.id}" ${i.soldOut ? 'disabled' : ''}>
+        ${i.image ? `<img src="${esc(i.image)}" alt="">` : ''}
+        <div class="info"><div class="name">${esc(i.name)}</div><div class="desc">${esc(i.description)}</div></div>
+        <div class="price">${i.soldOut ? '<span class="badge out">Sold out</span>' : (Number(i.price) ? fmt(i.price) : '')}</div>
+      </button>`).join('')}`).join('');
+  document.querySelectorAll('.item[data-id]').forEach(b => b.onclick = () => openItem(b.dataset.id));
+  renderCartBar();
+}
+function findItem(id) { for (const c of data.menu) for (const i of c.items) if (i.id === id) return i; }
+function openItem(id) {
+  if (!data.open || data.paused) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  current = findItem(id); qty = 1; picks = {};
+  for (const g of current.optionGroups) if (g.required && !g.multi) picks[g.id] = [g.choices[0].name];
+  $('#isName').textContent = current.name;
+  $('#isDesc').textContent = current.description;
+  $('#isNote').value = '';
+  $('#isErr').style.display = 'none';
+  renderGroups(); show('#itemSheet');
+}
+function renderGroups() {
+  $('#isGroups').innerHTML = current.optionGroups.map(g => `
+    <div class="group"><h3><span>${esc(g.name)}</span><span class="muted small">${g.multi ? 'Pick any' : (g.required ? 'Pick one' : 'Optional')}</span></h3>
+    <div class="chips">${g.choices.map(ch => `<button type="button" class="chip ${(picks[g.id] || []).includes(ch.name) ? 'on' : ''}" data-g="${g.id}" data-c="${esc(ch.name)}">${esc(ch.name)}${ch.price ? ' +' + fmt(ch.price) : ''}</button>`).join('')}</div></div>`).join('');
+  document.querySelectorAll('#isGroups .chip').forEach(b => b.onclick = () => {
+    const g = current.optionGroups.find(x => x.id === b.dataset.g), c = b.dataset.c;
+    let cur = picks[g.id] || [];
+    if (g.multi) cur = cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c];
+    else cur = (cur[0] === c && !g.required) ? [] : [c];
+    picks[g.id] = cur; renderGroups();
+  });
+  $('#qVal').textContent = qty;
+  $('#isAdd').textContent = `Add to order · ${fmt(unitPrice() * qty)}`;
+}
+function unitPrice(item = current, p = picks) {
+  let u = Number(item.price);
+  for (const g of item.optionGroups) for (const c of (p[g.id] || [])) { const ch = g.choices.find(x => x.name === c); if (ch) u += Number(ch.price); }
+  return u;
+}
+$('#qMinus').onclick = () => { qty = Math.max(1, qty - 1); renderGroups(); };
+$('#qPlus').onclick = () => { qty = Math.min(10, qty + 1); renderGroups(); };
+$('#isAdd').onclick = () => {
+  const missing = current.optionGroups.find(g => g.required && !(picks[g.id] || []).length);
+  if (missing) { $('#isErr').textContent = 'Please choose ' + missing.name + '.'; $('#isErr').style.display = 'block'; return; }
+  const count = cart.reduce((a, l) => a + l.qty, 0) + qty;
+  if (count > data.maxItems) { $('#isErr').textContent = `Orders are limited to ${data.maxItems} drinks.`; $('#isErr').style.display = 'block'; return; }
+  cart.push({ itemId: current.id, qty, options: picks, note: $('#isNote').value.trim() });
+  saveCart(); hide(); renderCartBar();
+};
+function lineDesc(l) {
+  const it = findItem(l.itemId); if (!it) return '';
+  return it.optionGroups.flatMap(g => (l.options[g.id] || [])).join(', ');
+}
+function cartTotal() { return cart.reduce((a, l) => { const it = findItem(l.itemId); return a + (it ? unitPrice(it, l.options) * l.qty : 0); }, 0); }
+function saveCart() { store.set('sfc_cart', cart); }
+function renderCartBar() {
+  const n = cart.reduce((a, l) => a + l.qty, 0);
+  $('#cartbar').classList.toggle('show', n > 0 && data && data.open && !data.paused);
+  $('#cartCount').textContent = `View order (${n})`;
+  $('#cartTotal').textContent = fmt(cartTotal());
+}
+$('#viewCart').onclick = () => { renderLines(); show('#cartSheet'); };
+function renderLines() {
+  $('#lines').innerHTML = cart.map((l, idx) => {
+    const it = findItem(l.itemId);
+    return `<div class="line"><div><b>${l.qty}× ${esc(it.name)}</b><div class="opts">${esc(lineDesc(l))}${l.note ? '<br>Note: ' + esc(l.note) : ''}</div>
+      <button class="rm" data-i="${idx}">Remove</button></div><div><b>${fmt(unitPrice(it, l.options) * l.qty)}</b></div></div>`;
+  }).join('');
+  document.querySelectorAll('.rm').forEach(b => b.onclick = () => { cart.splice(+b.dataset.i, 1); saveCart(); renderCartBar(); if (!cart.length) hide(); else renderLines(); });
+  $('#sumTotal').textContent = fmt(cartTotal());
+  const me = store.get('sfc_me', null), f = $('#checkout');
+  if (me) { for (const k of ['firstName', 'lastName', 'phone']) if (!f[k].value) f[k].value = me[k] || ''; }
+}
+$('#checkout').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target, err = $('#coErr'), btn = $('#placeBtn');
+  err.style.display = 'none';
+  const digits = f.phone.value.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+  if (digits.length !== 10) { err.textContent = 'Please enter a 10-digit phone number.'; err.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Placing order…';
+  const body = { firstName: f.firstName.value, lastName: f.lastName.value, phone: digits, note: f.note.value, website: f.website.value,
+    items: cart.map(l => ({ itemId: l.itemId, qty: l.qty, options: l.options, note: l.note })) };
+  try {
+    const r = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Could not place order');
+    store.set('sfc_me', { firstName: body.firstName, lastName: body.lastName, phone: digits });
+    store.set('sfc_last', { id: j.id, number: j.number, at: Date.now() });
+    cart = []; saveCart();
+    location.href = '/status?id=' + encodeURIComponent(j.id) + '&new=1';
+  } catch (ex) {
+    err.textContent = ex.message; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Place order';
+  }
+};
+function show(sel) { $('#bg').classList.add('show'); $(sel).classList.add('show'); }
+function hide() { $('#bg').classList.remove('show'); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('show')); }
+$('#bg').onclick = hide;
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = hide);
+
+const last = store.get('sfc_last', null);
+if (last && Date.now() - last.at < 6 * 3600e3) {
+  const a = $('#recent'); a.href = '/status?id=' + encodeURIComponent(last.id);
+  a.innerHTML = `☕ <b>Check on order #${last.number}</b> <span class="muted">→</span>`; a.style.display = 'block';
+}
+load().catch(() => { $('#menu').innerHTML = '<div class="notice err">Could not load the menu. Please refresh.</div>'; });
+setInterval(() => { if (!document.querySelector('.sheet.show')) load().catch(() => {}); }, 60000);
+</script>
+</body>
+</html>

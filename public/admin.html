@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin – SFC Cafe</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .wrap { max-width: 860px; }
+  .tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .tabs button { border: 0; padding: 10px 16px; border-radius: 99px; background: #efe5db; font-weight: 700; }
+  .tabs button.on { background: var(--brand); color: #fff; }
+  .panel { display: none; } .panel.on { display: block; }
+  .cat { padding: 14px; margin-bottom: 16px; }
+  .cat-head { display: flex; gap: 8px; align-items: center; }
+  .cat-head input { flex: 1; font-size: 20px; font-weight: 700; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; }
+  .iconbtn { border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+  .iconbtn.danger { color: var(--warn); }
+  details.item { border: 1.5px solid var(--line); border-radius: 12px; margin-top: 10px; background: #fffdfb; }
+  details.item > summary { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font-weight: 700; list-style: none; }
+  details.item > summary::-webkit-details-marker { display: none; }
+  .item-body { padding: 0 12px 12px; }
+  .row { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+  .checks { display: flex; gap: 18px; margin: 8px 0; flex-wrap: wrap; }
+  .checks label { display: flex; gap: 6px; align-items: center; font-weight: 600; }
+  .og { border: 1px dashed var(--line); border-radius: 10px; padding: 10px; margin: 10px 0; }
+  .og-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .og-head input { flex: 1; min-width: 140px; padding: 8px; border: 1.5px solid var(--line); border-radius: 8px; font-weight: 700; }
+  .og select { padding: 8px; border: 1.5px solid var(--line); border-radius: 8px; }
+  .choice { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+  .choice input { padding: 8px; border: 1.5px solid var(--line); border-radius: 8px; }
+  .choice input.n { flex: 1; } .choice input.p { width: 90px; }
+  .savebar { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 16px 0; display: flex; gap: 10px; }
+  .thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; vertical-align: middle; margin-right: 8px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { padding: 16px; } .stat .v { font-size: 32px; font-weight: 800; } .stat .k { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; } td { padding: 8px; border-bottom: 1px solid var(--line); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 99px; display: none; z-index: 99; font-weight: 600; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="top"><h1>SFC Cafe Admin</h1><p><a href="/board" style="color:#fff">Order board</a> · <a href="/" style="color:#fff" target="_blank">Order page</a> · <a href="/sign" style="color:#fff" target="_blank">Print QR sign</a> · <a href="#" id="logout" style="color:#fff">Log out</a></p></header>
+<div class="wrap">
+  <div class="tabs">
+    <button data-tab="menu" class="on">Menu</button>
+    <button data-tab="settings">Settings</button>
+    <button data-tab="today">Today</button>
+  </div>
+
+  <section class="panel on" id="p-menu">
+    <p class="muted">Tap an item to edit it. Changes go live when you press <b>Save menu</b>.</p>
+    <div id="cats"></div>
+    <button class="btn secondary" id="addCat">+ Add category</button>
+    <div class="savebar">
+      <button class="btn block" id="saveMenu">Save menu</button>
+    </div>
+    <p class="small muted">Messed something up? <a href="#" id="resetMenu">Reset to the starter menu</a>.</p>
+  </section>
+
+  <section class="panel" id="p-settings">
+    <form id="sf" class="card" style="padding:16px">
+      <label class="field">Shop name<input name="shopName" maxlength="60"></label>
+      <div class="checks">
+        <label><input type="checkbox" name="open"> Open for orders</label>
+        <label><input type="checkbox" name="paused"> Paused (too busy)</label>
+      </div>
+      <label class="field">Message when closed<input name="closedMessage" maxlength="200" placeholder="Open Sundays after service!"></label>
+      <label class="field">Most drinks allowed in one order<input name="maxItems" type="number" min="1" max="50"></label>
+      <label class="field">"Order ready" text message
+        <textarea name="readyMessage" maxlength="300"></textarea></label>
+      <p class="muted small" style="margin-top:-6px">You can use {first}, {last}, {number} and {shop}. They are filled in automatically.</p>
+      <button class="btn">Save settings</button>
+    </form>
+    <div class="card" style="padding:16px;margin-top:16px">
+      <h3 style="margin-top:0">Texting</h3>
+      <p id="smsState"></p>
+      <label class="field">Send a test text to<input id="testPhone" type="tel" placeholder="(555) 555-5555"></label>
+      <button class="btn secondary" id="testSms">Send test text</button>
+      <p id="testRes" class="small"></p>
+    </div>
+  </section>
+
+  <section class="panel" id="p-today">
+    <label class="field" style="max-width:240px">Day<select id="daySel"></select></label>
+    <div class="stats" id="stats"></div>
+    <div class="card" style="padding:16px;margin-top:16px"><h3 style="margin-top:0">Most popular</h3><table id="pop"></table></div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => '$' + Number(n).toFixed(2);
+const rid = () => Math.random().toString(36).slice(2, 10);
+let menu = [], settings = {}, dirty = false, openSet = new Set();
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2500); }
+async function api(url, opts = {}) {
+  const r = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json' } });
+  if (r.status === 401 || r.status === 403) { location.href = '/login?next=/admin'; throw new Error('auth'); }
+  const j = await r.json(); if (!r.ok) throw new Error(j.error); return j;
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === 'p-' + b.dataset.tab));
+  if (b.dataset.tab === 'today') loadSummary();
+});
+
+// ---------- Menu editor ----------
+function renderMenu() {
+  $('#cats').innerHTML = menu.map((c, ci) => `
+    <div class="cat card">
+      <div class="cat-head">
+        <input value="${esc(c.name)}" data-cat="${ci}" aria-label="Category name">
+        <button class="iconbtn" data-mvcat="${ci}" data-d="-1" title="Move up">↑</button>
+        <button class="iconbtn" data-mvcat="${ci}" data-d="1" title="Move down">↓</button>
+        <button class="iconbtn danger" data-delcat="${ci}">Delete</button>
+      </div>
+      ${c.items.map((it, ii) => itemHtml(it, ci, ii)).join('')}
+      <button class="btn secondary" style="margin-top:10px" data-additem="${ci}">+ Add item to ${esc(c.name)}</button>
+    </div>`).join('');
+  bind();
+}
+function itemHtml(it, ci, ii) {
+  const key = it.id;
+  return `<details class="item" data-key="${key}" ${openSet.has(key) ? 'open' : ''}>
+    <summary><span>${esc(it.name)} ${it.soldOut ? '<span class="badge out">Sold out</span>' : ''} ${it.hidden ? '<span class="badge">Hidden</span>' : ''}</span><span>${fmt(it.price)}</span></summary>
+    <div class="item-body">
+      <div class="row">
+        <label class="field">Name<input data-f="name" data-ci="${ci}" data-ii="${ii}" value="${esc(it.name)}"></label>
+        <label class="field">Price ($)<input data-f="price" data-ci="${ci}" data-ii="${ii}" type="number" step="0.05" min="0" value="${it.price}"></label>
+      </div>
+      <label class="field">Description<input data-f="description" data-ci="${ci}" data-ii="${ii}" value="${esc(it.description)}"></label>
+      <div class="checks">
+        <label><input type="checkbox" data-f="soldOut" data-ci="${ci}" data-ii="${ii}" ${it.soldOut ? 'checked' : ''}> Sold out</label>
+        <label><input type="checkbox" data-f="hidden" data-ci="${ci}" data-ii="${ii}" ${it.hidden ? 'checked' : ''}> Hide from menu</label>
+      </div>
+      <div class="field" style="font-weight:600;font-size:14px">Photo (optional)<br>
+        ${it.image ? `<img class="thumb" src="${esc(it.image)}" alt=""><button class="iconbtn danger" data-rmimg="${ci}.${ii}">Remove photo</button>` : ''}
+        <input type="file" accept="image/*" data-img="${ci}.${ii}" style="margin-top:6px">
+      </div>
+      <b style="font-size:14px">Options</b>
+      ${it.optionGroups.map((g, gi) => `
+        <div class="og">
+          <div class="og-head">
+            <input value="${esc(g.name)}" data-g="${ci}.${ii}.${gi}" data-gf="name" aria-label="Option group name">
+            <select data-g="${ci}.${ii}.${gi}" data-gf="type">
+              <option value="req" ${g.required && !g.multi ? 'selected' : ''}>Must pick one</option>
+              <option value="opt" ${!g.required && !g.multi ? 'selected' : ''}>Can pick one</option>
+              <option value="multi" ${g.multi ? 'selected' : ''}>Can pick many</option>
+            </select>
+            <button class="iconbtn danger" data-delg="${ci}.${ii}.${gi}">Remove</button>
+          </div>
+          ${g.choices.map((ch, chi) => `<div class="choice">
+            <input class="n" value="${esc(ch.name)}" data-ch="${ci}.${ii}.${gi}.${chi}" data-cf="name" placeholder="Choice">
+            <span class="muted">+$</span><input class="p" type="number" step="0.05" min="0" value="${ch.price}" data-ch="${ci}.${ii}.${gi}.${chi}" data-cf="price">
+            <button class="iconbtn danger" data-delch="${ci}.${ii}.${gi}.${chi}" aria-label="Remove choice">×</button></div>`).join('')}
+          <button class="iconbtn" style="margin-top:8px" data-addch="${ci}.${ii}.${gi}">+ Add choice</button>
+        </div>`).join('')}
+      <button class="iconbtn" data-addg="${ci}.${ii}">+ Add option group (like Size or Milk)</button>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="iconbtn" data-mv="${ci}.${ii}" data-d="-1">↑ Move up</button>
+        <button class="iconbtn" data-mv="${ci}.${ii}" data-d="1">↓ Move down</button>
+        <select class="iconbtn" data-movecat="${ci}.${ii}"><option value="">Move to category…</option>${menu.map((c, k) => k !== ci ? `<option value="${k}">${esc(c.name)}</option>` : '').join('')}</select>
+        <button class="iconbtn" data-dup="${ci}.${ii}">Duplicate</button>
+        <button class="iconbtn danger" data-del="${ci}.${ii}">Delete item</button>
+      </div>
+    </div></details>`;
+}
+const parts = s => s.split('.').map(Number);
+function mark() { dirty = true; $('#saveMenu').textContent = 'Save menu (unsaved changes)'; }
+function bind() {
+  document.querySelectorAll('details.item').forEach(d => d.ontoggle = () => { d.open ? openSet.add(d.dataset.key) : openSet.delete(d.dataset.key); });
+  document.querySelectorAll('[data-cat]').forEach(el => el.oninput = () => { menu[+el.dataset.cat].name = el.value; mark(); });
+  document.querySelectorAll('[data-f]').forEach(el => {
+    const it = () => menu[+el.dataset.ci].items[+el.dataset.ii];
+    el.oninput = el.onchange = () => {
+      const f = el.dataset.f;
+      it()[f] = el.type === 'checkbox' ? el.checked : (f === 'price' ? Number(el.value) : el.value);
+      mark(); if (el.type === 'checkbox') renderMenu();
+    };
+  });
+  document.querySelectorAll('[data-gf]').forEach(el => el.oninput = el.onchange = () => {
+    const [ci, ii, gi] = parts(el.dataset.g), g = menu[ci].items[ii].optionGroups[gi];
+    if (el.dataset.gf === 'name') g.name = el.value;
+    else { g.multi = el.value === 'multi'; g.required = el.value === 'req'; }
+    mark();
+  });
+  document.querySelectorAll('[data-cf]').forEach(el => el.oninput = () => {
+    const [ci, ii, gi, chi] = parts(el.dataset.ch), ch = menu[ci].items[ii].optionGroups[gi].choices[chi];
+    ch[el.dataset.cf] = el.dataset.cf === 'price' ? Number(el.value) : el.value; mark();
+  });
+  const on = (attr, fn) => document.querySelectorAll(`[data-${attr}]`).forEach(el => el.onclick = (e) => { e.preventDefault(); fn(el.dataset[attr], el); mark(); renderMenu(); });
+  on('addch', v => { const [ci, ii, gi] = parts(v); menu[ci].items[ii].optionGroups[gi].choices.push({ name: '', price: 0 }); });
+  on('delch', v => { const [ci, ii, gi, chi] = parts(v); menu[ci].items[ii].optionGroups[gi].choices.splice(chi, 1); });
+  on('addg', v => { const [ci, ii] = parts(v); menu[ci].items[ii].optionGroups.push({ id: rid(), name: 'New option', multi: false, required: true, choices: [{ name: 'Choice 1', price: 0 }] }); });
+  on('delg', v => { const [ci, ii, gi] = parts(v); menu[ci].items[ii].optionGroups.splice(gi, 1); });
+  on('additem', v => { const it = { id: rid(), name: 'New item', description: '', price: 3, soldOut: false, hidden: false, optionGroups: [] }; menu[+v].items.push(it); openSet.add(it.id); });
+  on('del', (v, el) => { const [ci, ii] = parts(v); if (el.dataset.sure) menu[ci].items.splice(ii, 1); else { openSet.add(menu[ci].items[ii].id); setTimeout(() => { const b = document.querySelector(`[data-del="${v}"]`); if (b) { b.dataset.sure = 1; b.textContent = 'Tap again to delete'; } }); } });
+  on('dup', v => { const [ci, ii] = parts(v); const c = JSON.parse(JSON.stringify(menu[ci].items[ii])); c.id = rid(); c.name += ' (copy)'; c.optionGroups.forEach(g => g.id = rid()); menu[ci].items.splice(ii + 1, 0, c); openSet.add(c.id); });
+  on('mv', (v, el) => { const [ci, ii] = parts(v), d = +el.dataset.d, a = menu[ci].items, j = ii + d; if (j >= 0 && j < a.length) [a[ii], a[j]] = [a[j], a[ii]]; });
+  on('mvcat', (v, el) => { const ci = +v, j = ci + +el.dataset.d; if (j >= 0 && j < menu.length) [menu[ci], menu[j]] = [menu[j], menu[ci]]; });
+  on('delcat', (v, el) => { if (el.dataset.sure) menu.splice(+v, 1); else setTimeout(() => { const b = document.querySelector(`[data-delcat="${v}"]`); if (b) { b.dataset.sure = 1; b.textContent = menu[+v].items.length ? `Tap again (deletes ${menu[+v].items.length} items)` : 'Tap again to delete'; } }); });
+  on('rmimg', v => { const [ci, ii] = parts(v); menu[ci].items[ii].image = ''; });
+  document.querySelectorAll('[data-movecat]').forEach(el => el.onchange = () => {
+    if (el.value === '') return; const [ci, ii] = parts(el.dataset.movecat); const [it] = menu[ci].items.splice(ii, 1); menu[+el.value].items.push(it); mark(); renderMenu();
+  });
+  document.querySelectorAll('[data-img]').forEach(el => el.onchange = async () => {
+    const f = el.files[0]; if (!f) return; const [ci, ii] = parts(el.dataset.img);
+    menu[ci].items[ii].image = await resize(f, 400); mark(); renderMenu();
+  });
+}
+function resize(file, max) {
+  return new Promise((res, rej) => {
+    const img = new Image(); img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.8)); URL.revokeObjectURL(img.src);
+    }; img.onerror = rej; img.src = URL.createObjectURL(file);
+  });
+}
+$('#addCat').onclick = () => { menu.push({ id: rid(), name: 'New category', items: [] }); mark(); renderMenu(); };
+$('#saveMenu').onclick = async () => {
+  try { const j = await api('/api/admin/menu', { method: 'PUT', body: JSON.stringify({ menu }) }); menu = j.menu; dirty = false; $('#saveMenu').textContent = 'Save menu'; renderMenu(); toast('Menu saved. It is live now.'); }
+  catch (e) { if (e.message !== 'auth') toast('Error: ' + e.message); }
+};
+$('#resetMenu').onclick = async e => {
+  e.preventDefault(); const a = e.target;
+  if (!a.dataset.sure) { a.dataset.sure = 1; a.textContent = 'Tap again to confirm. This replaces your whole menu.'; return; }
+  const j = await api('/api/admin/reset-menu', { method: 'POST' }); menu = j.menu; renderMenu(); toast('Menu reset'); a.textContent = 'Reset to the starter menu'; delete a.dataset.sure;
+};
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+// ---------- Settings ----------
+function fillSettings() {
+  const f = $('#sf');
+  for (const k of ['shopName', 'closedMessage', 'maxItems', 'readyMessage']) f[k].value = settings[k] ?? '';
+  f.open.checked = settings.open; f.paused.checked = settings.paused;
+}
+$('#sf').onsubmit = async e => {
+  e.preventDefault(); const f = e.target;
+  settings = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({
+    shopName: f.shopName.value, closedMessage: f.closedMessage.value, maxItems: f.maxItems.value,
+    readyMessage: f.readyMessage.value, open: f.open.checked, paused: f.paused.checked }) });
+  fillSettings(); toast('Settings saved');
+};
+$('#testSms').onclick = async () => {
+  const r = await api('/api/admin/test-sms', { method: 'POST', body: JSON.stringify({ phone: $('#testPhone').value }) });
+  $('#testRes').textContent = r.status === 'sent' ? '✓ Sent! Check the phone.' : r.status === 'skipped' ? 'Texting is not set up yet (see the setup guide).' : '⚠ Failed: ' + r.note;
+};
+
+// ---------- Summary ----------
+async function loadSummary(day) {
+  const s = await api('/api/admin/summary' + (day ? '?day=' + day : ''));
+  const sel = $('#daySel');
+  const days = s.days.includes(s.day) ? s.days : [s.day, ...s.days];
+  sel.innerHTML = days.map(d => `<option ${d === s.day ? 'selected' : ''}>${d}</option>`).join('');
+  sel.onchange = () => loadSummary(sel.value);
+  $('#stats').innerHTML = [
+    ['Orders', s.orders], ['Drinks', s.drinks], ['Order value', fmt(s.total)],
+    ['Avg. wait', s.avgWaitMin == null ? '–' : s.avgWaitMin + ' min'], ['Cancelled', s.cancelled],
+  ].map(([k, v]) => `<div class="stat card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  $('#pop').innerHTML = s.popular.length ? s.popular.map(p => `<tr><td>${esc(p.name)}</td><td style="text-align:right"><b>${p.qty}</b></td></tr>`).join('') : '<tr><td class="muted">No orders yet.</td></tr>';
+}
+$('#logout').onclick = async e => { e.preventDefault(); await fetch('/api/logout'); location.href = '/login'; };
+
+api('/api/admin/menu').then(j => {
+  if (!j.isAdmin) { location.href = '/login?next=/admin'; return; }
+  menu = j.menu; settings = j.settings; renderMenu(); fillSettings();
+  $('#smsState').innerHTML = j.sms ? '✅ Texting is <b>on</b>. Customers get a text when you tap Ready.' : '⚪ Texting is <b>off</b>. Add your Twilio details on your host (see the setup guide) to turn it on.';
+});
+</script>
+</body>
+</html>
