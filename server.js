@@ -30,6 +30,31 @@ const smsEnabled = () => !!(TW_SID && TW_TOKEN && (TW_FROM || TW_MSG_SVC));
 // ---------- Storage ----------
 function id(n = 8) { return crypto.randomBytes(n).toString('base64url'); }
 
+function londonFog() {
+  return { id: id(6), name: 'London Fog', description: 'Earl Grey tea, vanilla and steamed milk.', price: 4, soldOut: false,
+    optionGroups: [{ id: id(4), name: 'Hot or Iced', multi: false, required: true, choices: [{ name: 'Hot', price: 0 }, { name: 'Iced', price: 0 }] }] };
+}
+
+// One-time updates applied to menus that already exist on disk.
+const MIGRATIONS = {
+  'add-london-fog': (st) => {
+    const all = st.menu.flatMap(c => c.items);
+    if (all.some(i => /london fog/i.test(i.name))) return;
+    let tea = st.menu.find(c => /tea/i.test(c.name));
+    if (!tea) { tea = { id: id(4), name: 'Tea', items: [] }; st.menu.push(tea); }
+    tea.items.push(londonFog());
+  },
+};
+function migrate() {
+  store.migrations = store.migrations || [];
+  let changed = false;
+  for (const [name, fn] of Object.entries(MIGRATIONS)) {
+    if (store.migrations.includes(name)) continue;
+    fn(store); store.migrations.push(name); changed = true;
+  }
+  if (changed) save();
+}
+
 function defaultStore() {
   const g = (name, choices, { multi = false, required = !multi } = {}) =>
     ({ id: id(4), name, multi, required: required && !multi, choices: choices.map(c => ({ name: c, price: 0 })) });
@@ -67,6 +92,7 @@ function defaultStore() {
       ]},
       { id: id(4), name: 'Tea', items: [
         item('Tea', 'Hot tea.', 0, [g('Type', ['Green', 'Black'])]),
+        londonFog(),
       ]},
     ],
     orders: [],
@@ -80,8 +106,10 @@ function load() {
     store = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   } catch (e) {
     store = defaultStore();
+    store.migrations = Object.keys(MIGRATIONS);
     save();
   }
+  migrate();
 }
 let saveTimer = null;
 function save() {
